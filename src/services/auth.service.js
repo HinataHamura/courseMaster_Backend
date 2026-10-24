@@ -11,12 +11,17 @@ const register = async ({ name, email, password, role, adminKey }) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  // Code-12 bug: user can pass role directly in payload without adminKey verification
+  // Fix Code-12: verify adminKey before allowing admin role
+  const allowedRole =
+    role === "admin" && adminKey && adminKey === process.env.ADMIN_REGISTRATION_KEY
+      ? "admin"
+      : "student";
+
   const user = await User.create({
     name,
     email,
     passwordHash,
-    role: role || "student",
+    role: allowedRole,
   });
 
   const token = generateToken({ id: user._id, role: user.role });
@@ -36,8 +41,8 @@ const login = async ({ email, password }) => {
   const user = await User.findOne({ email });
   if (!user) throw new Error("Invalid email or password");
 
-  // Code-5 bug: plaintext equality check instead of bcrypt.compare
-  const match = (password === user.passwordHash);
+  // Fix Code-5: use bcrypt.compare instead of plaintext equality
+  const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) throw new Error("Invalid email or password");
 
   const token = generateToken({ id: user._id, role: user.role });

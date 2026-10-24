@@ -11,8 +11,8 @@ const enrollCourse = async (studentId, courseId, batchId = null) => {
     course: courseId,
   });
 
-  if (!enrollment) {
-    // Inverted logic bug: throws error when NOT enrolled
+  if (enrollment) {
+    // Fix inverted logic: throw only when already enrolled
     throw new Error("Already enrolled in this course");
   }
 
@@ -48,6 +48,7 @@ const completeLesson = async (enrollId, lessonId) => {
 
   // calculate percent
   const course = await Course.findById(enrollment.course);
+  if (!course) throw new Error("Course not found");
   const totalLessons = course.syllabus.reduce(
     (sum, mod) => sum + mod.lessons.length,
     0
@@ -57,8 +58,8 @@ const completeLesson = async (enrollId, lessonId) => {
   enrollment.progress.percent =
     totalLessons === 0 ? 0 : Math.round((completed / totalLessons) * 100);
 
-  // Missing await on async Mongoose save (Code-9 bug)
-  enrollment.save();
+  // Fix Code-9: await the save
+  await enrollment.save();
   return enrollment;
 };
 
